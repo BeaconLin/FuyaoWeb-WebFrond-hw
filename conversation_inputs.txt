@@ -1,0 +1,81 @@
+round1：
+已知当前是一个可以正常运行的vue3项目，本地启动项目也可以看到页面内容。请在当前框架的基础上完成下面前端功能的代码开发：
+## 页面功能
+你需要实现一个prompt评估的相关功能开发，页面需要有两个：一个全部评估任务看板页面，一个创建评估任务的页面，具体的要求如下：
+## 评估任务看板
+1、看板是以表格的形式展示，每行代表一个评估任务：
+查询所有评估任务的接口是：
+URL：http://localhost:8656/model_service/prompt_evaluation/tasks
+method:POST
+request body:
+{
+    'pageSize':20,
+    'pageNum':1,
+    'createBy':'a00123456', // 可选，按照用户过滤时传入
+    'status':'running', // 可选，用户按照状态过滤时传入
+    'taskName':'移动app酒店推荐prompt评估' // 可选，任务名称
+}
+返回结构及对应的中文映射是：
+taskName:任务名称
+status:状态
+modelName:模型名称
+userName:创建人
+createTime:开始时间
+表格头部要按照顺序展示出来这些字段的中文
+2、评估任务看板除了展示任务列表，还有一些辅助功能：
+1）右上角有输入框，可以输入任务名称进行搜索过滤。搜索时请求接口时传入taskName
+2）表格的status列支持过滤查看
+3）表格右下角分页展示，默认每页20条数据
+## 创建评估任务
+该功能入口在评估任务看板的左上角，展示一个“新建评估任务”的按钮，点击后打开创建任务的页面
+1、页面使用表单组件，需要有以下的选项：
+1）任务名称：用户输入
+2）评估模型选择：使用下拉选项，可选模型使用接口查询：
+URL：http://localhost:8656/model_service/prompt_eval_model
+method:GET
+返回结果为列表,每一项的字段包括：
+{
+    'modelName':'', // 模型名称
+    'modelId':'', // 模型Id
+}
+3）待评估的prompt输入
+输入prompt数量可以是1-3个，多个prompt情况请帮我设计一个方便对比查看的布局
+4）数据集上传：使用上传组件
+5）启动任务按钮：点击后调用启动任务接口
+启动任务接口：
+URL：http://localhost:8656/model_service/prompt_evaluation/task
+method:POST
+请求体：
+{
+    'modelId':'', // 模型Id从查询模型接获得
+    'modelName':'', // 模型名称从查询模型接获得
+    'scene':'prompt评估', // 固定值
+    'isOnline':true, // 固定值，表示在线评估
+    'threadCounts':4, // 固定值，表示4线程
+    'userId':'a00123456', // 用户工号
+    'userName':'alibaba', // 用户姓名
+    'taskName':'', // 用户输入任务名称
+    'prompts':{
+        'prompts':['','','']
+    }, // 一个或多个prompt模板内容
+    dataSets:{
+        S3Datasets:['']
+    } // 用户上传的一个或多个评测数据集
+}
+## 项目要求
+1、功能划分明确，接口、常量使用单独的文件夹以功能进行区分单独存放
+2、整个项目组件使用element-plus开源组件
+3、用户相关信息使用pinia管理，创建一个名称是userProfile的ts文件，定义：export const userProfileStore = defineStore('userProfile', ()=>{})，定义userId和userName都存在该文件的userInfo对象中，使用时仅需要在需要使用的文件夹中获取：
+import {userProfileStore} from '@/stores/userProfile'
+const profile = userProfileStore()
+const userInfo = profile.userInfo
+
+round2：
+当前接口均无法调用，那么请根据我描述的接口返回字段，创建一些mock数据
+
+round3：
+请帮我进行一些修改：
+1、单独的状态筛选可以去掉，使用表头的状态过滤就可以了
+2、创建任务按钮放在左边
+3、任务名称搜索框放在右边
+4、上面的标题，以及任务看板和新建任务tab栏都删除，不需要实现

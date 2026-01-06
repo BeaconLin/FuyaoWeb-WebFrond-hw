@@ -71,6 +71,7 @@
 import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import promptTemplateService from '../../service/promptTemplatesService'
 
 const router = useRouter()
 const formRef = ref()
@@ -118,10 +119,21 @@ const submit = () => {
     if (!valid) return
     submitting.value = true
     try {
-      // TODO: 调用创建模板的API
-      console.log('提交表单:', form)
-      ElMessage.success('模板创建成功')
-      router.push({ name: 'prompt-square' })
+      const payload = {
+        templateName: form.templateName,
+        tags: form.tags,
+        content: form.content,
+        example: form.example,
+      }
+      const res = await promptTemplateService.createPromptTemplate(payload)
+
+      // 假设 axiosService 已经返回 { code, message, data }
+      if (res && res.code === 0) {
+        ElMessage.success(res.message || '模板创建成功')
+        router.push({ name: 'prompt-square' })
+      } else {
+        ElMessage.error(res?.message || '创建模板失败')
+      }
     } catch (error) {
       ElMessage.error(error?.message || '创建模板失败')
     } finally {

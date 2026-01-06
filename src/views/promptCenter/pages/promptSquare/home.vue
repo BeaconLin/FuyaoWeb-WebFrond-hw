@@ -189,10 +189,11 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Plus, Star, View, CopyDocument, Search } from '@element-plus/icons-vue'
+import promptTemplateService from '../../service/promptTemplatesService'
 
 const router = useRouter()
 
@@ -214,326 +215,80 @@ const pagination = reactive({
   total: 0,
 })
 
-// 不同类别的标签配置
-const categoryTags = {
-  preset: [
-    { label: '全选', value: 'all' },
-    { label: '对话', value: 'dialogue' },
-    { label: '写作', value: 'writing' },
-    { label: '翻译', value: 'translation' },
-    { label: '代码', value: 'code' },
-    { label: '分析', value: 'analysis' },
-    { label: '总结', value: 'summary' },
-    { label: '创意', value: 'creative' },
-  ],
-  custom: [
-    { label: '全选', value: 'all' },
-    { label: '业务', value: 'business' },
-    { label: '技术', value: 'technical' },
-    { label: '营销', value: 'marketing' },
-    { label: '客服', value: 'service' },
-    { label: '教育', value: 'education' },
-  ],
-  favorite: [
-    { label: '全选', value: 'all' },
-    { label: '常用', value: 'common' },
-    { label: '高效', value: 'efficient' },
-    { label: '专业', value: 'professional' },
-    { label: '创新', value: 'innovative' },
-  ],
-}
+// 列表数据（当前页）
+const templates = ref([])
 
-// 标签列表，根据当前类别动态更新
-const tags = ref(categoryTags.preset)
+// 加载状态
+const loading = ref(false)
 
-// 标签映射，用于将value转换为label（合并所有类别的标签）
-const tagMap = {
-  dialogue: '对话',
-  writing: '写作',
-  translation: '翻译',
-  code: '代码',
-  analysis: '分析',
-  summary: '总结',
-  creative: '创意',
-  business: '业务',
-  technical: '技术',
-  marketing: '营销',
-  service: '客服',
-  education: '教育',
-  common: '常用',
-  efficient: '高效',
-  professional: '专业',
-  innovative: '创新',
-}
-
-// 模拟接口延迟
-const mockDelay = (ms = 300) => new Promise((resolve) => setTimeout(resolve, ms))
-
-// 不同类别的Mock模板数据
-const allTemplatesData = {
-  preset: [
-  {
-    id: 1,
-    title: '智能对话助手',
-    content: '你是一个专业的AI助手，能够帮助用户解决各种问题。请根据用户的提问，提供准确、有用的回答。\n\n用户问题：{{question}}\n\n请回答：',
-    contentPreview: '你是一个专业的AI助手，能够帮助用户解决各种问题。请根据用户的提问，提供准确、有用的回答。',
-    tag: 'dialogue',
-    favoriteCount: 128,
-    viewCount: 2560,
-    source: 'preset', // preset-预置模板, custom-自定义模板
-    createBy: '', // 自定义模板时显示创建人工号
-    createTime: '2024-01-15 10:30:00',
-    exampleInput: '用户问题：如何使用Vue3创建组件？',
-    inferenceResults: [
-      {
-        modelName: 'gpt-4.1-mini',
-        result: '要使用Vue3创建组件，你可以按照以下步骤：\n\n1. 创建一个.vue文件\n2. 在文件中定义template、script和style部分\n3. 使用export default导出组件\n4. 在父组件中导入并使用该组件\n\n例如：创建一个HelloWorld.vue文件，包含template、script setup和style三个部分。使用组合式API编写组件逻辑。',
-      },
-      {
-        modelName: 'qwen-max',
-        result: '在Vue3中创建组件的方法：\n\n1. 单文件组件（SFC）：创建.vue文件，包含template、script和style\n2. 组合式API：使用setup语法糖或setup()函数\n3. 选项式API：使用传统的data、methods等选项\n\n推荐使用组合式API，它提供了更好的类型推断和代码组织方式。',
-      },
-    ],
-  },
-  {
-    id: 2,
-    title: '代码生成与优化',
-    content: '你是一个经验丰富的编程专家，擅长多种编程语言。请根据用户的需求，生成高质量的代码，并提供优化建议。\n\n需求描述：{{requirement}}\n\n编程语言：{{language}}\n\n请生成代码：',
-    contentPreview: '你是一个经验丰富的编程专家，擅长多种编程语言。请根据用户的需求，生成高质量的代码，并提供优化建议。',
-    tag: 'code',
-    favoriteCount: 89,
-    viewCount: 1890,
-    source: 'preset',
-    createBy: '',
-    createTime: '2024-01-20 14:20:00',
-    exampleInput: '需求描述：实现一个快速排序算法\n编程语言：Python',
-    inferenceResults: [
-      {
-        modelName: 'gpt-4.1-mini',
-        result: '```python\ndef quick_sort(arr):\n    if len(arr) <= 1:\n        return arr\n    pivot = arr[len(arr) // 2]\n    left = [x for x in arr if x < pivot]\n    middle = [x for x in arr if x == pivot]\n    right = [x for x in arr if x > pivot]\n    return quick_sort(left) + middle + quick_sort(right)\n\n# 优化建议：\n# 1. 使用原地排序可以节省空间\n# 2. 对于小数组可以使用插入排序\n# 3. 随机选择pivot可以避免最坏情况',
-      },
-      {
-        modelName: 'qwen-max',
-        result: '快速排序实现：\n\n```python\ndef quick_sort(arr, low, high):\n    if low < high:\n        pi = partition(arr, low, high)\n        quick_sort(arr, low, pi - 1)\n        quick_sort(arr, pi + 1, high)\n\ndef partition(arr, low, high):\n    pivot = arr[high]\n    i = low - 1\n    for j in range(low, high):\n        if arr[j] <= pivot:\n            i += 1\n            arr[i], arr[j] = arr[j], arr[i]\n    arr[i + 1], arr[high] = arr[high], arr[i + 1]\n    return i + 1\n```\n\n时间复杂度：平均O(nlogn)，最坏O(n²)',
-      },
-    ],
-  },
-  {
-    id: 3,
-    title: '文章总结与提炼',
-    content: '你是一个专业的文本分析师，擅长提取文章的核心要点。请仔细阅读以下文章，并生成简洁明了的总结。\n\n文章内容：{{article}}\n\n请生成总结：',
-    contentPreview: '你是一个专业的文本分析师，擅长提取文章的核心要点。请仔细阅读以下文章，并生成简洁明了的总结。',
-    tag: 'summary',
-    favoriteCount: 156,
-    viewCount: 3200,
-    source: 'preset',
-    createBy: '',
-    createTime: '2024-01-10 09:15:00',
-    exampleInput: '文章内容：人工智能是21世纪最重要的技术之一。它正在改变我们的生活方式，从智能手机到自动驾驶汽车，AI技术无处不在。机器学习作为AI的核心技术，通过算法让计算机能够从数据中学习并做出决策。',
-    inferenceResults: [
-      {
-        modelName: 'gpt-4.1-mini',
-        result: '文章核心要点：\n1. 人工智能是21世纪最重要的技术之一\n2. AI正在改变生活方式，应用广泛（智能手机、自动驾驶等）\n3. 机器学习是AI的核心技术\n4. 机器学习通过算法让计算机从数据中学习并决策',
-      },
-      {
-        modelName: 'qwen-max',
-        result: '总结：本文介绍了人工智能的重要性及其在现代生活中的广泛应用，重点阐述了机器学习作为AI核心技术的工作原理——通过算法使计算机能够从数据中学习并做出决策。',
-      },
-    ],
-  },
-  ],
-  custom: [
-    {
-      id: 4,
-      title: '客户服务话术模板',
-      content: '你是一位专业的客服代表，需要友好、耐心地处理客户咨询。请根据客户的问题，提供专业、准确的回答。\n\n客户问题：{{question}}\n\n请回答：',
-      contentPreview: '你是一位专业的客服代表，需要友好、耐心地处理客户咨询。请根据客户的问题，提供专业、准确的回答。',
-      tag: 'service',
-      favoriteCount: 245,
-      viewCount: 3200,
-      source: 'custom',
-      createBy: 'a00123456',
-      createTime: '2024-01-25 11:20:00',
-      exampleInput: '客户问题：我的订单什么时候能发货？',
-      inferenceResults: [
-        {
-          modelName: 'gpt-4.1-mini',
-          result: '您好！感谢您的咨询。关于订单发货时间，我们会在订单确认后的1-3个工作日内安排发货。具体发货时间会根据您的收货地址和选择的物流方式有所不同。您可以在订单详情页面查看最新的物流信息。如有其他问题，请随时联系我们。',
-        },
-        {
-          modelName: 'qwen-max',
-          result: '您好，感谢您的耐心等待。您的订单目前正在处理中，预计将在1-3个工作日内发货。发货后我们会通过短信和邮件通知您，并提供物流单号供您查询。如果您需要更详细的物流信息，可以随时联系我们的客服团队。',
-        },
-      ],
-    },
-    {
-      id: 5,
-      title: '产品营销文案生成',
-      content: '你是一位资深的营销文案专家，擅长撰写吸引人的产品推广文案。请根据产品特点，创作一份有说服力的营销文案。\n\n产品名称：{{productName}}\n产品特点：{{features}}\n\n请生成营销文案：',
-      contentPreview: '你是一位资深的营销文案专家，擅长撰写吸引人的产品推广文案。请根据产品特点，创作一份有说服力的营销文案。',
-      tag: 'marketing',
-      favoriteCount: 189,
-      viewCount: 4500,
-      source: 'custom',
-      createBy: 'a00234567',
-      createTime: '2024-01-28 15:30:00',
-      exampleInput: '产品名称：智能手环\n产品特点：健康监测、运动追踪、长续航',
-      inferenceResults: [
-        {
-          modelName: 'gpt-4.1-mini',
-          result: '【智能手环，健康生活新选择】\n\n✨ 24小时健康监测，随时掌握身体状况\n🏃 精准运动追踪，记录每一步成长\n🔋 超长续航，告别频繁充电烦恼\n\n让科技为您的健康保驾护航，开启智能健康生活！',
-        },
-        {
-          modelName: 'qwen-max',
-          result: '智能手环，您的健康管家\n\n全天候监测心率、睡眠质量，让健康数据一目了然。精准记录运动轨迹，激励您坚持运动。超长续航设计，一次充电使用多天。让科技融入生活，让健康触手可及。',
-        },
-      ],
-    },
-    {
-      id: 6,
-      title: '在线教育课程介绍',
-      content: '你是一位教育内容策划专家，擅长撰写课程介绍文案。请根据课程信息，创作一份吸引学员的课程介绍。\n\n课程名称：{{courseName}}\n课程内容：{{content}}\n目标学员：{{target}}\n\n请生成课程介绍：',
-      contentPreview: '你是一位教育内容策划专家，擅长撰写课程介绍文案。请根据课程信息，创作一份吸引学员的课程介绍。',
-      tag: 'education',
-      favoriteCount: 312,
-      viewCount: 5800,
-      source: 'custom',
-      createBy: 'a00345678',
-      createTime: '2024-02-01 09:15:00',
-      exampleInput: '课程名称：Vue3实战开发\n课程内容：组件开发、状态管理、路由配置\n目标学员：前端开发初学者',
-      inferenceResults: [
-        {
-          modelName: 'gpt-4.1-mini',
-          result: '【Vue3实战开发课程】\n\n📚 课程亮点：\n- 从零开始学习Vue3核心概念\n- 实战项目：构建完整的单页应用\n- 掌握组件化开发思想\n- 学习状态管理和路由配置\n\n🎯 适合人群：前端开发初学者，希望快速掌握Vue3开发技能\n\n💡 学完本课程，你将能够独立开发Vue3项目！',
-        },
-        {
-          modelName: 'qwen-max',
-          result: 'Vue3实战开发课程\n\n本课程专为前端开发初学者设计，通过系统学习Vue3的核心概念和实战技巧，帮助学员快速掌握现代前端开发技能。课程涵盖组件开发、状态管理、路由配置等核心内容，通过实际项目案例，让学员在实践中成长。',
-        },
-      ],
-    },
-  ],
-  favorite: [
-    {
-      id: 7,
-      title: '快速邮件回复助手',
-      content: '你是一位专业的商务邮件撰写助手，能够快速生成专业、礼貌的邮件回复。请根据邮件内容，生成合适的回复。\n\n邮件主题：{{subject}}\n邮件内容：{{content}}\n\n请生成回复：',
-      contentPreview: '你是一位专业的商务邮件撰写助手，能够快速生成专业、礼貌的邮件回复。请根据邮件内容，生成合适的回复。',
-      tag: 'common',
-      favoriteCount: 456,
-      viewCount: 8900,
-      source: 'preset',
-      createBy: '',
-      createTime: '2024-01-12 08:30:00',
-      exampleInput: '邮件主题：项目进度咨询\n邮件内容：请问项目目前的进度如何？',
-      inferenceResults: [
-        {
-          modelName: 'gpt-4.1-mini',
-          result: '您好，\n\n感谢您的咨询。目前项目进展顺利，已完成60%的工作量。我们正在按计划推进，预计将在下月底完成全部工作。\n\n如有任何问题，请随时联系我。\n\n此致\n敬礼',
-        },
-        {
-          modelName: 'qwen-max',
-          result: '您好，\n\n关于项目进度，目前已完成60%的工作量，各项工作正在有序推进中。我们团队会继续努力，确保项目按时完成。\n\n如有其他需要了解的信息，欢迎随时沟通。\n\n祝好',
-        },
-      ],
-    },
-    {
-      id: 8,
-      title: '代码审查优化建议',
-      content: '你是一位资深的代码审查专家，能够快速发现代码中的问题并提供优化建议。请审查以下代码，并提供改进建议。\n\n代码：{{code}}\n\n请提供审查意见：',
-      contentPreview: '你是一位资深的代码审查专家，能够快速发现代码中的问题并提供优化建议。请审查以下代码，并提供改进建议。',
-      tag: 'efficient',
-      favoriteCount: 278,
-      viewCount: 5600,
-      source: 'preset',
-      createBy: '',
-      createTime: '2024-01-18 14:45:00',
-      exampleInput: '代码：function add(a, b) { return a + b; }',
-      inferenceResults: [
-        {
-          modelName: 'gpt-4.1-mini',
-          result: '代码审查意见：\n\n✅ 优点：\n- 函数简洁明了\n- 功能单一，职责清晰\n\n⚠️ 建议改进：\n1. 添加类型检查，确保参数为数字\n2. 添加错误处理，处理边界情况\n3. 添加JSDoc注释，提高代码可读性\n\n优化后的代码：\n```javascript\n/**\n * 两数相加\n * @param {number} a - 第一个数字\n * @param {number} b - 第二个数字\n * @returns {number} 两数之和\n */\nfunction add(a, b) {\n  if (typeof a !== "number" || typeof b !== "number") {\n    throw new Error("参数必须是数字");\n  }\n  return a + b;\n}\n```',
-        },
-        {
-          modelName: 'qwen-max',
-          result: '代码审查：\n\n该函数实现简单直接，但建议添加以下改进：\n1. 参数类型验证\n2. 异常处理\n3. 代码注释\n\n这样可以提高代码的健壮性和可维护性。',
-        },
-      ],
-    },
-    {
-      id: 9,
-      title: '技术方案设计模板',
-      content: '你是一位技术架构师，擅长设计技术方案。请根据需求，设计一份完整的技术方案。\n\n需求描述：{{requirement}}\n技术栈：{{techStack}}\n\n请设计技术方案：',
-      contentPreview: '你是一位技术架构师，擅长设计技术方案。请根据需求，设计一份完整的技术方案。',
-      tag: 'professional',
-      favoriteCount: 334,
-      viewCount: 7200,
-      source: 'preset',
-      createBy: '',
-      createTime: '2024-01-22 16:20:00',
-      exampleInput: '需求描述：构建一个高并发的电商系统\n技术栈：Vue3、Node.js、MySQL、Redis',
-      inferenceResults: [
-        {
-          modelName: 'gpt-4.1-mini',
-          result: '技术方案设计：\n\n1. 前端架构：\n   - 使用Vue3构建SPA应用\n   - 采用组件化开发，提高代码复用性\n   - 使用Vuex进行状态管理\n\n2. 后端架构：\n   - Node.js + Express构建RESTful API\n   - 使用MySQL存储业务数据\n   - Redis缓存热点数据，提高查询性能\n\n3. 性能优化：\n   - CDN加速静态资源\n   - 数据库读写分离\n   - 使用消息队列处理异步任务',
-        },
-        {
-          modelName: 'qwen-max',
-          result: '技术方案：\n\n前端：Vue3框架，组件化开发，响应式设计\n后端：Node.js服务，RESTful API设计\n数据库：MySQL主从架构，Redis缓存层\n\n通过分层架构和缓存策略，确保系统高并发性能。',
-        },
-      ],
-    },
-  ],
-}
-
-// 当前类别的模板数据
-const templates = ref(allTemplatesData.preset)
-
-// 过滤后的模板列表
-const filteredTemplates = computed(() => {
-  let result = templates.value
-
-  // 先根据标签过滤
-  if (!selectedTags.value.includes('all') && selectedTags.value.length > 0) {
-    result = result.filter((template) =>
-      selectedTags.value.includes(template.tag)
-    )
-  }
-
-  // 再根据搜索关键词过滤（对标题进行模糊搜索）
-  if (searchKeyword.value && searchKeyword.value.trim()) {
-    const keyword = searchKeyword.value.trim().toLowerCase()
-    result = result.filter((template) =>
-      template.title.toLowerCase().includes(keyword)
-    )
-  }
-
-  return result
-})
+// 标签列表（根据当前模板类型从接口获取）
+const tags = ref([])
 
 // 当前页的模板列表
-const currentPageTemplates = computed(() => {
-  const start = (pagination.pageNum - 1) * pagination.pageSize
-  const end = start + pagination.pageSize
-  return filteredTemplates.value.slice(start, end)
-})
+const currentPageTemplates = computed(() => templates.value)
+
+// 调用接口获取模板列表
+const loadTemplates = async () => {
+  loading.value = true
+  try {
+    const res = await promptTemplateService.getPromptTemplates(
+      String(pagination.pageNum),
+      String(pagination.pageSize),
+      {
+        templateType: templateType.value,
+        selectedTags: selectedTags.value,
+        searchKeyword: searchKeyword.value,
+      }
+    )
+
+    // 这里假设 axiosService 已经在拦截器中返回了 data，
+    // 且结构为 { code, data: { records, total, pageNum, pageSize } }
+    if (res && res.code === 0 && res.data) {
+      templates.value = res.data.records || []
+      pagination.total = res.data.total || 0
+    } else {
+      ElMessage.error(res?.message || '获取模板列表失败')
+    }
+  } catch (error) {
+    ElMessage.error('获取模板列表异常，请稍后重试')
+  } finally {
+    loading.value = false
+  }
+}
+
+// 调用接口获取当前模板类型的标签分类
+const loadTags = async () => {
+  try {
+    const res = await promptTemplateService.getTemplateTags(
+      templateType.value
+    )
+    // 假设返回结构为 { code, data: [{ label, value }, ...] }
+    if (res && res.code === 0) {
+      tags.value = Array.isArray(res.data) ? res.data : []
+    } else {
+      ElMessage.error(res?.message || '获取标签分类失败')
+      tags.value = []
+    }
+  } catch (error) {
+    ElMessage.error('获取标签分类异常，请稍后重试')
+    tags.value = []
+  }
+}
 
 // 处理模板类型切换
 const handleTypeChange = (value) => {
-  // 无需延迟，直接切换数据
-  tags.value = categoryTags[value] || categoryTags.preset
-
   // 重置标签选择为"全选"
   selectedTags.value = ['all']
-
-  // 加载对应类别的模板数据
-  templates.value = allTemplatesData[value] || []
 
   // 重置搜索关键词
   searchKeyword.value = ''
 
   // 重置分页到第一页
   pagination.pageNum = 1
+
+  // 根据新的模板类型刷新标签和模板列表
+  loadTags()
+  loadTemplates()
 }
 
 // 处理搜索
@@ -541,6 +296,8 @@ const handleSearch = () => {
   // 搜索逻辑已在 filteredTemplates 计算属性中实现
   // 重置到第一页
   pagination.pageNum = 1
+  // 重新请求数据
+  loadTemplates()
 }
 
 // 判断标签是否被选中
@@ -581,11 +338,14 @@ const handleTagClick = (tagValue) => {
   }
   // 重置到第一页
   pagination.pageNum = 1
+  // 重新请求数据
+  loadTemplates()
 }
 
-// 获取标签的中文标签
+// 获取标签的中文标签（接口直接返回 label，这里兜底）
 const getTagLabel = (tagValue) => {
-  return tagMap[tagValue] || tagValue
+  const tag = tags.value.find((item) => item.value === tagValue)
+  return tag?.label || tagValue
 }
 
 // 处理复制
@@ -603,6 +363,7 @@ const handleCopy = (content) => {
 // 处理分页切换
 const handlePageChange = (page) => {
   pagination.pageNum = page
+  loadTemplates()
 }
 
 // 跳转到创建模板页面
@@ -685,19 +446,10 @@ const getFullPrompt = (template) => {
   return fullPrompt
 }
 
-// 监听过滤后的模板列表变化，更新分页总数
-const updatePaginationTotal = () => {
-  pagination.total = filteredTemplates.value.length
-}
-
 onMounted(() => {
-  // 初始化分页总数
-  updatePaginationTotal()
-})
-
-// 监听过滤后的模板列表变化
-watch(filteredTemplates, () => {
-  updatePaginationTotal()
+  // 初始化加载标签和数据
+  loadTags()
+  loadTemplates()
 })
 </script>
 

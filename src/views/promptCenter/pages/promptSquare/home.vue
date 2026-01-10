@@ -119,13 +119,16 @@
               </template>
             </el-dropdown>
             <!-- 非自定义模板显示复制图标 -->
-            <el-icon
+            <div
               v-else
-              class="copy-icon"
+              class="copy-wrapper"
               @click.stop="handleCopy(template.content)"
             >
-              <CopyDocument />
-            </el-icon>
+              <el-icon class="copy-icon">
+                <CopyDocument />
+              </el-icon>
+              <span class="copy-text">复制</span>
+            </div>
           </div>
         </el-card>
       </div>
@@ -832,16 +835,26 @@ onMounted(() => {
   color: #f0a020;
 }
 
-.copy-icon {
-  font-size: 18px;
-  color: #409eff;
+.copy-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   cursor: pointer;
   transition: all 0.3s;
 }
 
-.copy-icon:hover {
-  color: #66b1ff;
-  transform: scale(1.1);
+.copy-wrapper:hover {
+  opacity: 0.8;
+}
+
+.copy-icon {
+  font-size: 16px;
+  color: #909399;
+}
+
+.copy-text {
+  font-size: 13px;
+  color: #909399;
 }
 
 .more-icon {

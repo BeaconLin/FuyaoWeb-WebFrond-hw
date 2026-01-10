@@ -43,6 +43,14 @@ const promptTemplateService = {
     isFavorite
       ? axiosService.post(`${promptHost}/model_service/api/favorites`, { templateId })
       : axiosService.delete(`${promptHost}/model_service/api/favorites/${templateId}`),
+
+  // 更新自定义模板
+  updatePromptTemplate: (templateId: string, data: any): any =>
+    axiosService.put(`${promptHost}/model_service/api/templates/${templateId}`, data),
+
+  // 删除自定义模板
+  deletePromptTemplate: (templateId: string): any =>
+    axiosService.delete(`${promptHost}/model_service/api/templates/${templateId}`),
 }
 
 export default promptTemplateService

@@ -85,7 +85,42 @@
                 <span>{{ template.viewCount }}</span>
               </span>
             </div>
+            <!-- 自定义模板显示下拉菜单 -->
+            <el-dropdown
+              v-if="templateType === 'custom' && template.source === 'custom'"
+              trigger="click"
+              @command="(command) => handleMenuCommand(command, template)"
+              @click.stop
+            >
+              <el-icon class="more-icon" @click.stop>
+                <MoreFilled />
+              </el-icon>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item command="copy">
+                    <span class="dropdown-item">
+                      <el-icon><CopyDocument /></el-icon>
+                      <span>复制</span>
+                    </span>
+                  </el-dropdown-item>
+                  <el-dropdown-item command="edit">
+                    <span class="dropdown-item">
+                      <el-icon><Edit /></el-icon>
+                      <span>编辑</span>
+                    </span>
+                  </el-dropdown-item>
+                  <el-dropdown-item command="delete" divided>
+                    <span class="dropdown-item">
+                      <el-icon><Delete /></el-icon>
+                      <span>删除</span>
+                    </span>
+                  </el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
+            <!-- 非自定义模板显示复制图标 -->
             <el-icon
+              v-else
               class="copy-icon"
               @click.stop="handleCopy(template.content)"
             >
@@ -117,8 +152,8 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
-import { Plus, Star, StarFilled, View, CopyDocument, Search } from '@element-plus/icons-vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { Plus, Star, StarFilled, View, CopyDocument, Search, MoreFilled, Edit, Delete } from '@element-plus/icons-vue'
 import promptTemplateService from '../../service/promptTemplatesService'
 import TemplateDetailDialog from './TemplateDetailDialog.vue'
 
@@ -534,10 +569,76 @@ const goCreateTemplate = () => {
   router.push({ name: 'create-template' })
 }
 
-// 打开模板详情弹窗
+// 打开模板详情弹窗（保留用于向后兼容，但建议使用路由跳转）
 const openTemplateDetail = (template) => {
-  currentTemplate.value = template
-  dialogVisible.value = true
+  // 跳转到模板详情页面
+  router.push({
+    name: 'template-detail',
+    params: {
+      templateId: template.id,
+    },
+  })
+}
+
+// 判断是否为自定义模板
+const isCustomTemplate = (template) => {
+  return templateType.value === 'custom' && template.source === 'custom'
+}
+
+// 处理下拉菜单命令
+const handleMenuCommand = async (command, template) => {
+  if (command === 'copy') {
+    handleCopy(template.content)
+  } else if (command === 'edit') {
+    handleEdit(template)
+  } else if (command === 'delete') {
+    handleDelete(template)
+  }
+}
+
+// 处理编辑
+const handleEdit = (template) => {
+  // 跳转到模板详情页面，开启编辑模式
+  router.push({
+    name: 'template-detail',
+    params: {
+      templateId: template.id,
+    },
+    query: {
+      mode: 'edit',
+    },
+  })
+}
+
+// 处理删除
+const handleDelete = async (template) => {
+  try {
+    await ElMessageBox.confirm(
+      `确定要删除模板"${template.title}"吗？删除后无法恢复。`,
+      '删除确认',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning',
+      }
+    )
+
+    // 用户确认删除
+    const res = await promptTemplateService.deletePromptTemplate(template.id)
+
+    if (res && res.code === 0) {
+      ElMessage.success('删除成功')
+      // 刷新列表
+      loadTemplates()
+    } else {
+      ElMessage.error(res?.message || '删除失败')
+    }
+  } catch (error) {
+    // 用户取消删除或接口调用失败
+    if (error !== 'cancel') {
+      ElMessage.error(error?.message || '删除失败，请稍后重试')
+    }
+  }
 }
 
 onMounted(() => {
@@ -741,6 +842,28 @@ onMounted(() => {
 .copy-icon:hover {
   color: #66b1ff;
   transform: scale(1.1);
+}
+
+.more-icon {
+  font-size: 18px;
+  color: #909399;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.more-icon:hover {
+  color: #409eff;
+  transform: scale(1.1);
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dropdown-item .el-icon {
+  font-size: 16px;
 }
 
 .pagination {

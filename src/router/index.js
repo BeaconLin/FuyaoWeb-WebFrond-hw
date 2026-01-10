@@ -10,6 +10,8 @@ const PromptSquare = () =>
     import ('../views/promptCenter/pages/promptSquare/home.vue')
 const CreateTemplate = () =>
     import ('../views/promptCenter/pages/promptSquare/CreateTemplate.vue')
+const TemplateDetail = () =>
+    import ('../views/promptCenter/pages/promptSquare/TemplateDetail.vue')
 
 const router = createRouter({
     history: createWebHistory(
@@ -43,6 +45,11 @@ const router = createRouter({
             path: '/createTemplate',
             name: 'create-template',
             component: CreateTemplate,
+        },
+        {
+            path: '/promptTemplateDetail/:templateId',
+            name: 'template-detail',
+            component: TemplateDetail,
         },
     ],
 })

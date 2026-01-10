@@ -21,10 +21,9 @@
           />
         </el-form-item>
 
-        <el-form-item label="相关标签" prop="tags">
+        <el-form-item label="相关标签" prop="tag">
           <el-select
-            v-model="form.tags"
-            multiple
+            v-model="form.tag"
             filterable
             placeholder="请选择相关标签"
             class="full-width"
@@ -79,7 +78,7 @@ const submitting = ref(false)
 
 const form = reactive({
   templateName: '',
-  tags: [],
+  tag: '',
   content: '',
   example: '',
 })
@@ -98,7 +97,7 @@ const rules = {
   templateName: [
     { required: true, message: '请输入模板名称', trigger: 'blur' },
   ],
-  tags: [{ required: true, message: '请至少选择一个标签', trigger: 'change' }],
+  tag: [{ required: true, message: '请选择一个标签', trigger: 'change' }],
   content: [{ required: true, message: '请输入模板内容', trigger: 'blur' }],
   example: [{ required: true, message: '请输入使用案例', trigger: 'blur' }],
 }
@@ -109,7 +108,7 @@ const goBack = () => {
 
 const reset = () => {
   form.templateName = ''
-  form.tags = []
+  form.tag = ''
   form.content = ''
   form.example = ''
 }
@@ -121,7 +120,7 @@ const submit = () => {
     try {
       const payload = {
         templateName: form.templateName,
-        tags: form.tags,
+        tag: form.tag,
         content: form.content,
         example: form.example,
       }
